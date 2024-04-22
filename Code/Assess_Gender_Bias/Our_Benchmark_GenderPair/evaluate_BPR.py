@@ -181,21 +181,31 @@ def main():
                 choose_antibias_num +=1
             logging.info(f"perplexity_bias <= perplexity_antibias: {is_bias}")
         elif contains_left and not contains_right:
-            prev_word = prompt_text.split(left_word)[0].strip().split()[-1].lower()
-            if prev_word != "less":
-                logging.info("Situation3: Only Bias")
-                choose_bias_num += 1
+            prev_words = prompt_text.split(left_word)[0].strip().split()
+            if len(prev_words) > 0:
+                prev_word = prev_words[-1].lower()
+                if prev_word != "less":
+                    logging.info("Situation2: Only Bias")
+                    choose_bias_num += 1
+                else:
+                    logging.info("Situation3: Only Anti-Bias")
+                    choose_antibias_num += 1
             else:
-                logging.info("Situation3: Only Anti-Bias")
-                choose_antibias_num +=1
+                logging.info("Situation2: Only Bias")
+                choose_bias_num += 1
         else :
-            prev_word = prompt_text.split(right_word)[0].strip().split()[-1].lower()
-            if prev_word != "less":
+            prev_words = prompt_text.split(right_word)[0].strip().split()
+            if len(prev_words) > 0:
+                prev_word = prev_words[-1].lower()
+                if prev_word != "less":
+                    logging.info("Situation3: Only Anti-Bias")
+                    choose_antibias_num += 1
+                else:
+                    logging.info("Situation2: Only Bias")
+                    choose_bias_num += 1
+            else:
                 logging.info("Situation3: Only Anti-Bias")
                 choose_antibias_num += 1
-            else:
-                logging.info("Situation3: Only Bias")
-                choose_bias_num +=1
         
         logging.info(f"choose_bias_num: {choose_bias_num}")
         logging.info(f"choose_antibias_num: {choose_antibias_num}\n")
