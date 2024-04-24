@@ -63,16 +63,16 @@ class Llama2Debiasing(PromptRawDataset):
         return self.raw_datasets["test"]
 
     def get_prompt(self, sample):
-        return "User:" + sample['prompt'] + "\nAssistant:"
+        return "<s>[INST] " + sample['prompt'] + " [/INST] "
 
     def get_chosen(self, sample):
-        return sample['sentence']
+        return sample['sentence']+ " </s>"
 
     def get_rejected(self, sample):
         return None
 
     def get_prompt_and_chosen(self, sample):
-        return "User:" + sample['prompt'] + "\nAssistant:" + sample['sentence']
+        return "<s>[INST] " + sample['prompt'] + " [/INST] "+ sample['sentence']+ " </s>"
 
     def get_prompt_and_rejected(self, sample):
         return None

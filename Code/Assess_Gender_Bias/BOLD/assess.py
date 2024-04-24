@@ -4,6 +4,7 @@ import torch
 import pandas as pd
 import json
 import deepspeed
+import sys
 
 from transformers import (
     AutoConfig,
@@ -67,7 +68,7 @@ def parse_args():
     parser.add_argument("--model_type",
                         type=str,
                         default="llama2",
-                        choices=["alpaca", "open_llama", "llama2", "vicuna", "orca", "falcon","baichuan_base", "baichuan_chat","stablebeluga", "platypus", "mistral"],
+                        choices=["llama2"],
                         required=True)
     parser.add_argument("--input_prompts",
                         type=str,
@@ -177,29 +178,16 @@ def prompt_eval(args, model_baseline, tokenizer_baseline, device, prompts,output
     for i, prompt in enumerate(prompts, start=1):
         #inputs_baseline = tokenizer_baseline(prompt, return_tensors="pt").to(device)
         print("==========prompt begin=========")
-        if args.model_type == "baichuan_chat":
-            message = "user:" + prompt + "\nassistant:"
-            message_baseline = tokenizer_baseline(message, return_tensors="pt").to(device)
-            r_base = generate(model_baseline,
-                              tokenizer_baseline,
-                              message_baseline,
-                              num_beams=1,
-                              num_return_sequences=args.num_return_sequences,
-                              max_new_tokens=args.max_new_tokens,
-                              temperature=0.0,
-                              top_k=50,
-                              top_p=1.0)
-        else:
-            inputs_baseline = tokenizer_baseline(prompt, return_tensors="pt").to(device)
-            r_base = generate(model_baseline,
-                          tokenizer_baseline,
-                          inputs_baseline,
-                          num_beams=1,
-                          num_return_sequences=args.num_return_sequences,
-                          max_new_tokens=args.max_new_tokens,
-                          temperature=0.0,
-                          top_k=50,
-                          top_p=1.0)
+        inputs_baseline = tokenizer_baseline(prompt, return_tensors="pt").to(device)
+        r_base = generate(model_baseline,
+                        tokenizer_baseline,
+                        inputs_baseline,
+                        num_beams=1,
+                        num_return_sequences=args.num_return_sequences,
+                        max_new_tokens=args.max_new_tokens,
+                        temperature=0.0,
+                        top_k=50,
+                        top_p=1.0)
         responses_dict = {"prompt{}".format(i): r_base}
 
         responses_dict_list.append(responses_dict)
@@ -221,35 +209,15 @@ def main():
     print("get args")
     ds_config = get_zero_ds_config(offload=args.offload, stage=args.zero_stage)
 
-    if args.model_type == "baichuan_base":
-        print("baichuan_base tokenizer loading")
-        tokenizer_baseline = AutoTokenizer.from_pretrained(args.model_name_or_path_baseline, trust_remote_code=True)
-        print("baichuan_base tokenizer loaded")
-        model_baseline = AutoModelForCausalLM.from_pretrained(args.model_name_or_path_baseline, trust_remote_code=True)
-    elif args.model_type == "baichuan_chat":
-        print("baichuan_chat tokenizer loading")
-        tokenizer_baseline = AutoTokenizer.from_pretrained(args.model_name_or_path_baseline, use_fast=False, trust_remote_code=True)
-        print("baichuan_chat tokenizer loaded")
-        model_baseline = AutoModelForCausalLM.from_pretrained(args.model_name_or_path_baseline, trust_remote_code=True)
-        model_baseline.generation_config = GenerationConfig.from_pretrained(args.model_name_or_path_baseline)
-    else:
-        config_baseline = AutoConfig.from_pretrained(args.model_name_or_path_baseline, trust_remote_code=True)
-        print("config loaded")
-        if args.model_type == "alpaca":
-            tokenizer_baseline = AutoTokenizer.from_pretrained(args.model_name_or_path_baseline,fast_tokenizer=True, unk_token="<unk>",
-                                                    bos_token="<s>",
-                                                    eos_token="</s>")
-        else:
-            tokenizer_baseline = AutoTokenizer.from_pretrained(args.model_name_or_path_baseline,fast_tokenizer=True)
-        print("tokenizer loaded")
-        model_baseline = get_model(config_baseline, args.model_name_or_path_baseline,
-                               tokenizer_baseline)
-        print("model loaded")
+    config_baseline = AutoConfig.from_pretrained(args.model_name_or_path_baseline, trust_remote_code=True)
+    print("config loaded")
+    tokenizer_baseline = AutoTokenizer.from_pretrained(args.model_name_or_path_baseline,fast_tokenizer=True)
+    print("tokenizer loaded")
+    model_baseline = get_model(config_baseline, args.model_name_or_path_baseline,
+                            tokenizer_baseline)
+    print("model loaded")
 
-    if args.model_type in ["baichuan_base", "baichuan_chat", "falcon"]:
-        ds_type = torch.bfloat16
-    else:
-        ds_type = torch.float16
+    ds_type = torch.float16
 
     ds_model = deepspeed.init_inference(
         model=model_baseline,     
@@ -264,34 +232,15 @@ def main():
     print(f"Model load at: {ds_model.module.device}\n")
     df = pd.read_csv(args.input_prompts)  
     prompts = df["Prompt"].apply(lambda x: x.strip('"')).tolist()
-    if args.model_type == "alpaca":
+    print("prompts loaded")  
+
+    if args.model_type == "llama2":
         prompts = [
-            "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n### Instruction:\n{}\n\n### Response:".format(
+            "<s>[INST] {} [/INST] ".format(
                 prompt) for prompt in prompts]
-    elif args.model_type == "open_llama":
-        prompts = ["Q:{}\nA:".format(prompt) for prompt in prompts]
-    elif args.model_type == "llama2":
-        prompts = [
-            "User:{}\nAssistant:".format(
-                prompt) for prompt in prompts]
-    elif args.model_type == "vicuna":
-        prompts = ["USER: {}\nASSISTANT:".format(prompt) for prompt in prompts]
-    elif args.model_type == "orca":
-        prompts = [
-            "### System:\nYou are an AI assistant that follows instruction extremely well. Help as much as you can.\n\n### User:{}\n\n### Assistant:".format(
-                prompt) for prompt in prompts]
-    elif args.model_type == "falcon":
-        prompts = [
-            "System:You are an AI assistant that follows instruction extremely well. Help as much as you can.\nUser:{}\nFalcon:".format(
-                prompt) for prompt in prompts]
-    elif args.model_type == "baichuan_base":
-        prompts = ["{}\n".format(prompt) for prompt in prompts]
-    elif args.model_type == "stablebeluga":
-        prompts = ["### System:\nYou are StableBeluga, an AI that follows instructions extremely well. Help as much as you can. Remember, be safe, and don't do anything illegal.\n\n### User:{}\n\n### Assistant:\n".format(prompt) for prompt in prompts]
-    elif args.model_type == "mistral":
-        prompts = ["[INST]{}[/INST]\n".format(prompt) for prompt in prompts]
-    elif args.model_type == "platypus":
-        prompts = ["### Instruction:\n{}\n\n### Response:".format(prompt) for prompt in prompts]
+    else:
+        print(f"Warning: The prompt format for the model '{args.model_type}' is not defined. Please add the specific prompt format for this model.")
+        sys.exit()
     
     prompt_eval(args, ds_model, tokenizer_baseline, device, prompts, args.output_response)
 
