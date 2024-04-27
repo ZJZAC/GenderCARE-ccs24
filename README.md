@@ -72,7 +72,7 @@ To set up the environment, follow these three steps:
    print(torch.cuda.is_available())
    ```
 
-   If `torch.cuda.is_available()` returns `True`, the environment are ready. 
+   If `torch.cuda.is_available()` returns `True`, the environment is ready. 
 
 
 ### Pre-trained LLM Download
@@ -389,7 +389,7 @@ The average regard scores for the two gender groups reproduce the Llama2-13B (de
    - Modify `--model_name_or_path_baseline` to point to your new model's checkpoint
    - Adjust any model-specific hyperparameters and prompt format as needed
 
-3. Analyze the generated bias-pair ratio ,toxicity and regard scores to quantify gender bias in the new model.
+3. Analyze the generated bias-pair ratio, toxicity and regard scores to quantify gender bias in the new model.
 
 **To assess gender bias on a new dataset using our evaluate metrics:**
 
@@ -399,7 +399,7 @@ The average regard scores for the two gender groups reproduce the Llama2-13B (de
    - Point `--input_prompts` to your new prompt files 
    - Modify `--model_name_or_path_baseline` to use your own model
 
-3. Analyze the generated bias-pair ratio, toxicity and regard scores to quantify gender bias in your new dataset.
+3. Analyze the generated bias-pair ratio, toxicity, and regard scores to quantify gender bias in your new dataset.
 
 **To apply our debiasing strategy on a new model:**
 
