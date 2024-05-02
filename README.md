@@ -54,7 +54,7 @@ Our code has been tested on Linux (a server with 4 x NVIDIA A6000 GPUs, each wit
 
 To set up the environment, follow these three steps:
 
-1. Install CUDA 11.7, PyTorch 2.0.1, and Python 3.10.13 within a `conda` virtual environment.
+1. Install CUDA 11.7, pytorch 2.0.1, python 3.10.13, numpy 1.26.4 and mpi4py 3.1.4 within a `conda` virtual environment.
 
 2. Run the following command to install the other required packages listed in the `requirements.txt` file in the current directory:
 
